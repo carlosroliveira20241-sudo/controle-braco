@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Controle do Braço</title>
+<style>
+  :root {
+    --bg: #14171c;
+    --panel: #1c2129;
+    --line: #2a3038;
+    --accent: #ff7a3d;
+    --accent-dim: #5a3322;
+    --text: #e8eaed;
+    --text-dim: #8b919c;
+    --ok: #4ade80;
+    --err: #f87171;
+    --mono: 'SF Mono', 'Consolas', 'Courier New', monospace;
+    --sans: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    padding: 16px;
+    padding-bottom: 100px;
+  }
+  .topo {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+  }
+  h1 {
+    font-size: 19px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+  .status {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .ponto {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--text-dim);
+  }
+  .ponto.ok { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+  .ponto.err { background: var(--err); box-shadow: 0 0 6px var(--err); }
+
+  .config {
+    margin-top: 14px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px;
+    display: grid;
+    gap: 8px;
+  }
+  .config.escondido { display: none; }
+  .config label {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .config input {
+    width: 100%;
+    background: #0e1014;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 9px 10px;
+    font-family: var(--mono);
+    font-size: 13px;
+    margin-top: 4px;
+  }
+  .config button {
+    margin-top: 4px;
+    background: var(--accent);
+    color: #1a0e06;
+    border: none;
+    border-radius: 6px;
+    padding: 10px;
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .link-config {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-decoration: underline;
+    margin-top: 6px;
+    display: inline-block;
+  }
+
+  .abas {
+    margin-top: 16px;
+    display: flex;
+    gap: 6px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 4px;
+  }
+  .aba-botao {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    padding: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 8px;
+  }
+  .aba-botao.ativa {
+    background: var(--accent);
+    color: #1a0e06;
+  }
+  .aba-conteudo { display: none; }
+  .aba-conteudo.ativa { display: block; }
+
+  .servos {
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+  .servo-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 8px;
+    text-align: center;
+  }
+  .servo-card .nome {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .servo-card .valor {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 600;
+    margin-top: 4px;
+    color: var(--accent);
+  }
+  .servo-card .grau { font-size: 12px; color: var(--text-dim); }
+
+  /* ---- Aba Chat ---- */
+  .chat {
+    margin-top: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .msg {
+    max-width: 85%;
+    padding: 10px 13px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  .msg.user {
+    align-self: flex-end;
+    background: var(--accent);
+    color: #1a0e06;
+    border-bottom-right-radius: 3px;
+  }
+  .msg.ia {
+    align-self: flex-start;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-bottom-left-radius: 3px;
+  }
+  .msg.sistema {
+    align-self: center;
+    color: var(--text-dim);
+    font-size: 12px;
+    font-family: var(--mono);
+  }
+
+  .barra {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--bg);
+    border-top: 1px solid var(--line);
+    padding: 10px 12px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    display: flex;
+    gap: 8px;
+  }
+  .barra.escondida { display: none; }
+  .barra input {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    color: var(--text);
+    padding: 12px 16px;
+    font-size: 15px;
+  }
+  .barra input:focus { outline: none; border-color: var(--accent); }
+  .botao-redondo {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: none;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+  .botao-mic { background: var(--panel); border: 1px solid var(--line); color: var(--text); }
+  .botao-mic.gravando { background: var(--err); color: #fff; }
+  .botao-enviar { background: var(--accent); color: #1a0e06; }
+  .botao-enviar:disabled { opacity: 0.4; }
+
+  /* ---- Aba Manual (joysticks arrastáveis) ---- */
+  .manual-aviso {
+    margin-top: 14px;
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: center;
+  }
+  .joysticks {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    align-items: center;
+  }
+  .joystick-bloco {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .joystick-label {
+    font-size: 12px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .joystick-trilha {
+    position: relative;
+    width: 260px;
+    height: 56px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 28px;
+    touch-action: none;
+  }
+  .joystick-bola {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: #1a0e06;
+    cursor: grab;
+    user-select: none;
+  }
+  .joystick-bola:active { cursor: grabbing; }
+  .joystick-trilha-vertical {
+    width: 56px;
+    height: 220px;
+    border-radius: 28px;
+  }
+  .botao-centralizar {
+    margin-top: 28px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+<div class="topo">
+  <h1>Controle do Braço</h1>
+  <div class="status">
+    <div class="ponto" id="pontoStatus"></div>
+    <span id="textoStatus">verificando...</span>
+  </div>
+</div>
+
+<a class="link-config" id="abrirConfig">Configurar IP e chave de API</a>
+
+<div class="config escondido" id="painelConfig">
+  <div>
+    <label>IP do ESP32 (ex: 192.168.43.55)</label>
+    <input type="text" id="campoIP" placeholder="192.168.43.55">
+  </div>
+  <div>
+    <label>Chave de API do Gemini</label>
+    <input type="password" id="campoChave" placeholder="AIza...">
+  </div>
+  <button onclick="salvarConfig()">Salvar</button>
+</div>
+
+<div class="abas">
+  <button class="aba-botao ativa" id="abaBotaoChat">Chat com IA</button>
+  <button class="aba-botao" id="abaBotaoManual">Controle manual</button>
+</div>
+
+<div class="servos">
+  <div class="servo-card">
+    <div class="nome">Servo 1</div>
+    <div class="valor"><span id="valorS1">90</span><span class="grau">°</span></div>
+  </div>
+  <div class="servo-card">
+    <div class="nome">Servo 2</div>
+    <div class="valor"><span id="valorS2">90</span><span class="grau">°</span></div>
+  </div>
+  <div class="servo-card">
+    <div class="nome">Servo 3</div>
+    <div class="valor"><span id="valorS3">90</span><span class="grau">°</span></div>
+  </div>
+</div>
+
+<!-- ABA 1: CHAT -->
+<div class="aba-conteudo ativa" id="abaChat">
+  <div class="chat" id="chat">
+    <div class="msg sistema">Diga um comando, tipo "levante o braço" ou "olhe para a esquerda"</div>
+  </div>
+</div>
+
+<!-- ABA 2: CONTROLE MANUAL -->
+<div class="aba-conteudo" id="abaManual">
+  <div class="manual-aviso">Arraste as bolinhas para mover cada servo em tempo real</div>
+  <div class="joysticks">
+    <div class="joystick-bloco">
+      <div class="joystick-label">Servo 3 — giro da base</div>
+      <div class="joystick-trilha" id="trilhaS3">
+        <div class="joystick-bola" id="bolaS3">90°</div>
+      </div>
+    </div>
+    <div class="joystick-bloco">
+      <div class="joystick-label">Servo 1 — base do braço</div>
+      <div class="joystick-trilha joystick-trilha-vertical" id="trilhaS1">
+        <div class="joystick-bola" id="bolaS1">90°</div>
+      </div>
+    </div>
+    <div class="joystick-bloco">
+      <div class="joystick-label">Servo 2 — ponta do braço</div>
+      <div class="joystick-trilha joystick-trilha-vertical" id="trilhaS2">
+        <div class="joystick-bola" id="bolaS2">90°</div>
+      </div>
+    </div>
+    <button class="botao-centralizar" id="botaoCentralizar">Centralizar tudo (90°)</button>
+  </div>
+</div>
+
+<div class="barra" id="barraChat">
+  <button class="botao-redondo botao-mic" id="botaoMic">🎤</button>
+  <input type="text" id="campoTexto" placeholder="Digite um comando..." autocomplete="off">
+  <button class="botao-redondo botao-enviar" id="botaoEnviar">↑</button>
+</div>
+
+<script>
+let configIP = localStorage.getItem('esp32_ip') || '';
+let configChave = localStorage.getItem('gemini_key') || '';
+
+document.getElementById('campoIP').value = configIP;
+document.getElementById('campoChave').value = configChave;
+
+document.getElementById('abrirConfig').addEventListener('click', () => {
+  document.getElementById('painelConfig').classList.toggle('escondido');
+});
+
+function salvarConfig() {
+  configIP = document.getElementById('campoIP').value.trim();
+  configChave = document.getElementById('campoChave').value.trim();
+  localStorage.setItem('esp32_ip', configIP);
+  localStorage.setItem('gemini_key', configChave);
+  document.getElementById('painelConfig').classList.add('escondido');
+  verificarConexao();
+}
+
+async function verificarConexao() {
+  const ponto = document.getElementById('pontoStatus');
+  const texto = document.getElementById('textoStatus');
+  if (!configIP) {
+    texto.textContent = 'configure o IP';
+    return;
+  }
+  try {
+    const resp = await fetch('http://' + configIP + '/', { method: 'GET' });
+    if (resp.ok) {
+      ponto.className = 'ponto ok';
+      texto.textContent = 'braço conectado';
+    } else {
+      throw new Error();
+    }
+  } catch (e) {
+    ponto.className = 'ponto err';
+    texto.textContent = 'sem conexão com o ESP32';
+  }
+}
+verificarConexao();
+
+// ---------------- ABAS ----------------
+const abaBotaoChat = document.getElementById('abaBotaoChat');
+const abaBotaoManual = document.getElementById('abaBotaoManual');
+const abaChat = document.getElementById('abaChat');
+const abaManual = document.getElementById('abaManual');
+const barraChat = document.getElementById('barraChat');
+
+abaBotaoChat.addEventListener('click', () => {
+  abaBotaoChat.classList.add('ativa');
+  abaBotaoManual.classList.remove('ativa');
+  abaChat.classList.add('ativa');
+  abaManual.classList.remove('ativa');
+  barraChat.classList.remove('escondida');
+});
+
+abaBotaoManual.addEventListener('click', () => {
+  abaBotaoManual.classList.add('ativa');
+  abaBotaoChat.classList.remove('ativa');
+  abaManual.classList.add('ativa');
+  abaChat.classList.remove('ativa');
+  barraChat.classList.add('escondida');
+});
+
+// ---------------- FUNÇÕES COMPARTILHADAS ----------------
+function adicionarMensagem(texto, tipo) {
+  const chat = document.getElementById('chat');
+  const div = document.createElement('div');
+  div.className = 'msg ' + tipo;
+  div.textContent = texto;
+  chat.appendChild(div);
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
+async function enviarMensagemTela(linha1, linha2) {
+  if (!configIP) return;
+  try {
+    await fetch('http://' + configIP + '/mensagem', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ linha1: linha1 || '', linha2: linha2 || '' })
+    });
+  } catch (e) {
+    // Falha silenciosa - a tela e um extra, nao deve travar o resto
+  }
+}
+
+async function enviarSequencia(passos) {
+  if (passos.length > 0) {
+    const ultimo = passos[passos.length - 1];
+    atualizarValoresVisuais(ultimo.s1, ultimo.s2, ultimo.s3);
+  }
+
+  if (!configIP) return;
+  try {
+    await fetch('http://' + configIP + '/sequencia', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ passos: passos })
+    });
+    document.getElementById('pontoStatus').className = 'ponto ok';
+    document.getElementById('textoStatus').textContent = 'braço conectado';
+  } catch (e) {
+    document.getElementById('pontoStatus').className = 'ponto err';
+    document.getElementById('textoStatus').textContent = 'falha ao mover';
+  }
+}
+
+function atualizarValoresVisuais(s1, s2, s3) {
+  document.getElementById('valorS1').textContent = s1;
+  document.getElementById('valorS2').textContent = s2;
+  document.getElementById('valorS3').textContent = s3;
+}
+
+// ---------------- CHAT COM GEMINI ----------------
+async function enviarComando() {
+  const campo = document.getElementById('campoTexto');
+  const comando = campo.value.trim();
+  if (!comando) return;
+  if (!configChave) {
+    adicionarMensagem('Configure sua chave de API primeiro (link no topo).', 'sistema');
+    return;
+  }
+
+  adicionarMensagem(comando, 'user');
+  campo.value = '';
+  document.getElementById('botaoEnviar').disabled = true;
+
+  const s1Atual = document.getElementById('valorS1').textContent;
+  const s2Atual = document.getElementById('valorS2').textContent;
+  const s3Atual = document.getElementById('valorS3').textContent;
+
+  const promptSistema = 'Você controla um braço robótico com 3 servos (0 a 180 graus cada) e uma tela LCD de 16 colunas por 2 linhas. ' +
+    'Servo 1 controla a base de um braço articulado (cima/baixo). ' +
+    'Servo 2 controla a ponta do braço (cima/baixo). ' +
+    'Servo 3 controla o giro horizontal da base (esquerda/direita). ' +
+    'Posição atual: servo1=' + s1Atual + ', servo2=' + s2Atual + ', servo3=' + s3Atual + '. ' +
+    'Você pode fazer tanto um único movimento quanto uma sequência de vários passos (por exemplo, se pedirem para "dançar", crie uma sequência de 3 a 6 passos variados, repetindo ou alternando posições). Use no máximo 6 passos por sequência. ' +
+    'Para cada passo, escolha o ângulo (0-180) de cada servo, e uma velocidade individual para cada um (em milissegundos por grau: valores baixos como 5-10 são rápidos, valores altos como 30-50 são lentos e suaves). ' +
+    'Escolha também uma pausa em milissegundos para esperar depois que esse passo terminar, antes do próximo (0 se não precisar esperar). ' +
+    'Quando fizer sentido, você pode também mostrar uma mensagem curta na tela LCD, usando até 16 caracteres por linha, em até 2 linhas. Isso é opcional - só inclua "tela" quando for útil ou divertido mostrar algo. ' +
+    'Responda SOMENTE em JSON, sem nenhum texto antes ou depois, no formato exato: ' +
+    '{"fala": "frase curta confirmando a ação", "tela": {"linha1": "texto", "linha2": "texto"}, "passos": [{"s1": numero, "v1": numero, "s2": numero, "v2": numero, "s3": numero, "v3": numero, "pausa": numero}]}. ' +
+    'O campo "tela" é opcional - omita-o se não fizer sentido mostrar nada. Para um movimento simples, use uma lista "passos" com 1 só item.';
+
+  try {
+    const resposta = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=' + configChave,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: comando }] }],
+          systemInstruction: { parts: [{ text: promptSistema }] },
+          generationConfig: {
+            responseMimeType: 'application/json',
+            maxOutputTokens: 2048
+          }
+        })
+      }
+    );
+
+    const dados = await resposta.json();
+
+    if (dados.error) {
+      throw new Error('API: ' + dados.error.message);
+    }
+
+    const candidato = dados.candidates && dados.candidates[0];
+    if (!candidato || !candidato.content) {
+      console.log('Resposta completa do Gemini:', JSON.stringify(dados));
+      throw new Error('Resposta vazia (motivo: ' + (candidato ? candidato.finishReason : 'sem candidato') + ')');
+    }
+
+    const textoResposta = candidato.content.parts[0].text;
+    const limpo = textoResposta.replace(/```json|```/g, '').trim();
+    const json = JSON.parse(limpo);
+
+    const passosValidados = (json.passos || []).map(p => ({
+      s1: Math.max(0, Math.min(180, parseInt(p.s1))),
+      v1: Math.max(1, parseInt(p.v1) || 15),
+      s2: Math.max(0, Math.min(180, parseInt(p.s2))),
+      v2: Math.max(1, parseInt(p.v2) || 15),
+      s3: Math.max(0, Math.min(180, parseInt(p.s3))),
+      v3: Math.max(1, parseInt(p.v3) || 15),
+      pausa: Math.max(0, parseInt(p.pausa) || 0)
+    }));
+
+    await enviarSequencia(passosValidados);
+
+    if (json.tela) {
+      await enviarMensagemTela(json.tela.linha1, json.tela.linha2);
+    }
+
+    adicionarMensagem(json.fala || 'Movimento realizado.', 'ia');
+
+  } catch (e) {
+    adicionarMensagem('Erro ao processar comando: ' + e.message, 'sistema');
+  }
+
+  document.getElementById('botaoEnviar').disabled = false;
+}
+
+document.getElementById('botaoEnviar').addEventListener('click', enviarComando);
+document.getElementById('campoTexto').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') enviarComando();
+});
+
+// Reconhecimento de voz
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const botaoMic = document.getElementById('botaoMic');
+
+if (SpeechRecognition) {
+  const reconhecimento = new SpeechRecognition();
+  reconhecimento.lang = 'pt-BR';
+  reconhecimento.interimResults = false;
+
+  let gravando = false;
+
+  botaoMic.addEventListener('click', () => {
+    if (gravando) {
+      reconhecimento.stop();
+      return;
+    }
+    reconhecimento.start();
+    gravando = true;
+    botaoMic.classList.add('gravando');
+  });
+
+  reconhecimento.onresult = (evento) => {
+    const texto = evento.results[0][0].transcript;
+    document.getElementById('campoTexto').value = texto;
+    enviarComando();
+  };
+
+  reconhecimento.onend = () => {
+    gravando = false;
+    botaoMic.classList.remove('gravando');
+  };
+
+  reconhecimento.onerror = () => {
+    gravando = false;
+    botaoMic.classList.remove('gravando');
+  };
+} else {
+  botaoMic.style.display = 'none';
+}
+
+// ---------------- CONTROLE MANUAL (joysticks arrastáveis) ----------------
+// Throttle de envio para nao sobrecarregar o ESP32 com requisicoes excessivas
+let ultimoEnvioManual = 0;
+const intervaloMinimoEnvio = 50; // ms
+
+function configurarJoystick(idTrilha, idBola, vertical, aoMudarAngulo) {
+  const trilha = document.getElementById(idTrilha);
+  const bola = document.getElementById(idBola);
+  let arrastando = false;
+
+  function tamanhoUtil() {
+    return vertical ? (trilha.clientHeight - bola.clientHeight) : (trilha.clientWidth - bola.clientWidth);
+  }
+
+  function definirPosicaoPorAngulo(angulo) {
+    const util = tamanhoUtil();
+    // Vertical: 180 graus no topo, 0 graus na base (intuitivo: empurrar pra cima = aumentar)
+    // Horizontal: 0 na esquerda, 180 na direita
+    const fracao = vertical ? (1 - angulo / 180) : (angulo / 180);
+    const pos = fracao * util;
+    if (vertical) {
+      bola.style.top = pos + 'px';
+      bola.style.left = '3px';
+    } else {
+      bola.style.left = pos + 'px';
+      bola.style.top = '3px';
+    }
+    bola.textContent = angulo + '°';
+  }
+
+  function calcularAnguloPorPosicao(clientX, clientY) {
+    const rect = trilha.getBoundingClientRect();
+    const util = tamanhoUtil();
+    let pos, fracao;
+    if (vertical) {
+      pos = clientY - rect.top - bola.clientHeight / 2;
+      pos = Math.max(0, Math.min(util, pos));
+      fracao = pos / util;
+      return Math.round((1 - fracao) * 180);
+    } else {
+      pos = clientX - rect.left - bola.clientWidth / 2;
+      pos = Math.max(0, Math.min(util, pos));
+      fracao = pos / util;
+      return Math.round(fracao * 180);
+    }
+  }
+
+  function iniciar(e) {
+    arrastando = true;
+    mover(e);
+  }
+  function mover(e) {
+    if (!arrastando) return;
+    const ponto = e.touches ? e.touches[0] : e;
+    const angulo = calcularAnguloPorPosicao(ponto.clientX, ponto.clientY);
+    definirPosicaoPorAngulo(angulo);
+    aoMudarAngulo(angulo);
+    e.preventDefault();
+  }
+  function soltar() {
+    arrastando = false;
+  }
+
+  bola.addEventListener('mousedown', iniciar);
+  bola.addEventListener('touchstart', iniciar, { passive: false });
+  window.addEventListener('mousemove', mover);
+  window.addEventListener('touchmove', mover, { passive: false });
+  window.addEventListener('mouseup', soltar);
+  window.addEventListener('touchend', soltar);
+
+  // Permite tambem clicar direto na trilha para saltar pra essa posicao
+  trilha.addEventListener('mousedown', (e) => {
+    if (e.target === bola) return;
+    const angulo = calcularAnguloPorPosicao(e.clientX, e.clientY);
+    definirPosicaoPorAngulo(angulo);
+    aoMudarAngulo(angulo);
+  });
+
+  definirPosicaoPorAngulo(90);
+
+  return { definirPosicaoPorAngulo };
+}
+
+let anguloManualS1 = 90, anguloManualS2 = 90, anguloManualS3 = 90;
+
+async function enviarPosicaoManual() {
+  const agora = Date.now();
+  if (agora - ultimoEnvioManual < intervaloMinimoEnvio) return;
+  ultimoEnvioManual = agora;
+
+  atualizarValoresVisuais(anguloManualS1, anguloManualS2, anguloManualS3);
+
+  if (!configIP) return;
+  try {
+    await fetch('http://' + configIP + '/manual', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        s1: anguloManualS1,
+        s2: anguloManualS2,
+        s3: anguloManualS3
+      })
+    });
+    document.getElementById('pontoStatus').className = 'ponto ok';
+    document.getElementById('textoStatus').textContent = 'braço conectado';
+  } catch (e) {
+    document.getElementById('pontoStatus').className = 'ponto err';
+    document.getElementById('textoStatus').textContent = 'falha ao mover';
+  }
+}
+
+const joystickS1 = configurarJoystick('trilhaS1', 'bolaS1', true, (angulo) => {
+  anguloManualS1 = angulo;
+  enviarPosicaoManual();
+});
+const joystickS2 = configurarJoystick('trilhaS2', 'bolaS2', true, (angulo) => {
+  anguloManualS2 = angulo;
+  enviarPosicaoManual();
+});
+const joystickS3 = configurarJoystick('trilhaS3', 'bolaS3', false, (angulo) => {
+  anguloManualS3 = angulo;
+  enviarPosicaoManual();
+});
+
+document.getElementById('botaoCentralizar').addEventListener('click', () => {
+  anguloManualS1 = 90; anguloManualS2 = 90; anguloManualS3 = 90;
+  joystickS1.definirPosicaoPorAngulo(90);
+  joystickS2.definirPosicaoPorAngulo(90);
+  joystickS3.definirPosicaoPorAngulo(90);
+  ultimoEnvioManual = 0;
+  enviarPosicaoManual();
+});
+</script>
+
+</body>
+</html>
