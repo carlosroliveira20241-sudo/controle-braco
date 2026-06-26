@@ -292,6 +292,124 @@
     padding: 10px 16px;
     font-size: 13px;
   }
+  /* ---- Aba Diagnóstico ---- */
+  .diag-topo {
+    margin-top: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .botao-pequeno {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  .diag-cards {
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+  .diag-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 8px;
+    text-align: center;
+  }
+  .diag-card-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .diag-card-valor {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-top: 4px;
+  }
+  .diag-un { font-size: 11px; color: var(--text-dim); }
+  .diag-secao {
+    margin-top: 18px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px;
+  }
+  .diag-secao-titulo {
+    font-size: 12px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 10px;
+  }
+  .diag-grafico {
+    width: 100%;
+    height: 80px;
+    background: #0e1014;
+    border-radius: 6px;
+  }
+  .diag-legenda {
+    margin-top: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .diag-bolinha {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 2px;
+    margin-right: 4px;
+  }
+  .diag-bolinha.usada { background: var(--accent); }
+  .diag-bolinha.livre { background: #3a4250; }
+  .diag-bolinha.gpio-saida { background: var(--ok); }
+  .diag-bolinha.gpio-projeto { background: var(--accent); }
+  .diag-bolinha.gpio-livre { background: #3a4250; }
+  .diag-barra-mem {
+    width: 100%;
+    height: 22px;
+    background: #3a4250;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .diag-barra-usada {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.4s;
+  }
+  .diag-barra-usada.flash { background: #5DCAA5; }
+  .gpio-grade {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 5px;
+  }
+  .gpio-pino {
+    aspect-ratio: 1;
+    border-radius: 5px;
+    background: #3a4250;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text);
+  }
+  .gpio-pino.saida { background: var(--ok); color: #0a1f14; font-weight: 700; }
+  .gpio-pino.projeto { background: var(--accent); color: #1a0e06; font-weight: 700; }
+
 </style>
 </head>
 <body>
@@ -312,8 +430,8 @@
     <input type="text" id="campoIP" placeholder="192.168.43.55">
   </div>
   <div>
-    <label>Chave de API do Gemini</label>
-    <input type="password" id="campoChave" placeholder="AIza...">
+    <label>Chave de API da Groq</label>
+    <input type="password" id="campoChave" placeholder="gsk_...">
   </div>
   <button onclick="salvarConfig()">Salvar</button>
 </div>
@@ -321,6 +439,7 @@
 <div class="abas">
   <button class="aba-botao ativa" id="abaBotaoChat">Chat com IA</button>
   <button class="aba-botao" id="abaBotaoManual">Controle manual</button>
+  <button class="aba-botao" id="abaBotaoDiag">Diagnóstico</button>
 </div>
 
 <div class="servos">
@@ -371,6 +490,86 @@
   </div>
 </div>
 
+<!-- ABA 3: DIAGNÓSTICO -->
+<div class="aba-conteudo" id="abaDiag">
+  <div class="diag-topo">
+    <span id="diagStatusTexto">Conectando ao ESP32...</span>
+    <button class="botao-pequeno" id="botaoAtualizarDiag">Atualizar</button>
+  </div>
+
+  <!-- Cartoes de metricas principais -->
+  <div class="diag-cards">
+    <div class="diag-card">
+      <div class="diag-card-label">RAM livre</div>
+      <div class="diag-card-valor"><span id="mHeapLivre">--</span><span class="diag-un"> KB</span></div>
+    </div>
+    <div class="diag-card">
+      <div class="diag-card-label">Temperatura</div>
+      <div class="diag-card-valor"><span id="mTemp">--</span><span class="diag-un"> °C</span></div>
+    </div>
+    <div class="diag-card">
+      <div class="diag-card-label">Uptime</div>
+      <div class="diag-card-valor"><span id="mUptime">--</span></div>
+    </div>
+    <div class="diag-card">
+      <div class="diag-card-label">Sinal WiFi</div>
+      <div class="diag-card-valor"><span id="mRssi">--</span><span class="diag-un"> dBm</span></div>
+    </div>
+    <div class="diag-card">
+      <div class="diag-card-label">CPU</div>
+      <div class="diag-card-valor"><span id="mCpu">--</span><span class="diag-un"> MHz</span></div>
+    </div>
+    <div class="diag-card">
+      <div class="diag-card-label">Comandos</div>
+      <div class="diag-card-valor"><span id="mComandos">--</span></div>
+    </div>
+  </div>
+
+  <!-- Grafico de RAM livre ao longo do tempo -->
+  <div class="diag-secao">
+    <div class="diag-secao-titulo">RAM livre ao longo do tempo</div>
+    <svg id="graficoHeap" viewBox="0 0 300 80" preserveAspectRatio="none" class="diag-grafico"></svg>
+    <div class="diag-legenda"><span>mínimo registrado: <span id="mHeapMin">--</span> KB</span></div>
+  </div>
+
+  <!-- Mapa de memoria -->
+  <div class="diag-secao">
+    <div class="diag-secao-titulo">Mapa de memória RAM (heap)</div>
+    <div class="diag-barra-mem">
+      <div class="diag-barra-usada" id="barraMemUsada"></div>
+    </div>
+    <div class="diag-legenda">
+      <span><span class="diag-bolinha usada"></span>Usada: <span id="memUsada">--</span> KB</span>
+      <span><span class="diag-bolinha livre"></span>Livre: <span id="memLivre">--</span> KB</span>
+    </div>
+    <div class="diag-legenda">
+      <span>Maior bloco contíguo: <span id="memMaiorBloco">--</span> KB (fragmentação)</span>
+    </div>
+  </div>
+
+  <!-- Mapa da Flash -->
+  <div class="diag-secao">
+    <div class="diag-secao-titulo">Memória Flash (programa)</div>
+    <div class="diag-barra-mem">
+      <div class="diag-barra-usada flash" id="barraFlashUsada"></div>
+    </div>
+    <div class="diag-legenda">
+      <span>Programa: <span id="flashUsada">--</span> KB de <span id="flashTotal">--</span> KB</span>
+    </div>
+  </div>
+
+  <!-- GPIOs / pinos -->
+  <div class="diag-secao">
+    <div class="diag-secao-titulo">Pinos (GPIO) em uso</div>
+    <div class="gpio-grade" id="gpioGrade"></div>
+    <div class="diag-legenda">
+      <span><span class="diag-bolinha gpio-saida"></span>Saída ativa</span>
+      <span><span class="diag-bolinha gpio-projeto"></span>Usado no projeto</span>
+      <span><span class="diag-bolinha gpio-livre"></span>Livre</span>
+    </div>
+  </div>
+</div>
+
 <div class="barra" id="barraChat">
   <button class="botao-redondo botao-mic" id="botaoMic">🎤</button>
   <input type="text" id="campoTexto" placeholder="Digite um comando..." autocomplete="off">
@@ -379,7 +578,7 @@
 
 <script>
 let configIP = localStorage.getItem('esp32_ip') || '';
-let configChave = localStorage.getItem('gemini_key') || '';
+let configChave = localStorage.getItem('groq_key') || '';
 
 document.getElementById('campoIP').value = configIP;
 document.getElementById('campoChave').value = configChave;
@@ -392,7 +591,7 @@ function salvarConfig() {
   configIP = document.getElementById('campoIP').value.trim();
   configChave = document.getElementById('campoChave').value.trim();
   localStorage.setItem('esp32_ip', configIP);
-  localStorage.setItem('gemini_key', configChave);
+  localStorage.setItem('groq_key', configChave);
   document.getElementById('painelConfig').classList.add('escondido');
   verificarConexao();
 }
@@ -422,24 +621,43 @@ verificarConexao();
 // ---------------- ABAS ----------------
 const abaBotaoChat = document.getElementById('abaBotaoChat');
 const abaBotaoManual = document.getElementById('abaBotaoManual');
+const abaBotaoDiag = document.getElementById('abaBotaoDiag');
 const abaChat = document.getElementById('abaChat');
 const abaManual = document.getElementById('abaManual');
+const abaDiag = document.getElementById('abaDiag');
 const barraChat = document.getElementById('barraChat');
 
-abaBotaoChat.addEventListener('click', () => {
-  abaBotaoChat.classList.add('ativa');
+function desativarTodasAbas() {
+  abaBotaoChat.classList.remove('ativa');
   abaBotaoManual.classList.remove('ativa');
-  abaChat.classList.add('ativa');
+  abaBotaoDiag.classList.remove('ativa');
+  abaChat.classList.remove('ativa');
   abaManual.classList.remove('ativa');
+  abaDiag.classList.remove('ativa');
+}
+
+abaBotaoChat.addEventListener('click', () => {
+  desativarTodasAbas();
+  abaBotaoChat.classList.add('ativa');
+  abaChat.classList.add('ativa');
   barraChat.classList.remove('escondida');
+  pararDiagnostico();
 });
 
 abaBotaoManual.addEventListener('click', () => {
+  desativarTodasAbas();
   abaBotaoManual.classList.add('ativa');
-  abaBotaoChat.classList.remove('ativa');
   abaManual.classList.add('ativa');
-  abaChat.classList.remove('ativa');
   barraChat.classList.add('escondida');
+  pararDiagnostico();
+});
+
+abaBotaoDiag.addEventListener('click', () => {
+  desativarTodasAbas();
+  abaBotaoDiag.classList.add('ativa');
+  abaDiag.classList.add('ativa');
+  barraChat.classList.add('escondida');
+  iniciarDiagnostico();
 });
 
 // ---------------- FUNÇÕES COMPARTILHADAS ----------------
@@ -466,12 +684,13 @@ async function enviarMensagemTela(linha1, linha2) {
 }
 
 async function enviarSequencia(passos) {
-  if (passos.length > 0) {
-    const ultimo = passos[passos.length - 1];
-    atualizarValoresVisuais(ultimo.s1, ultimo.s2, ultimo.s3);
+  if (!configIP) {
+    if (passos.length > 0) {
+      const ultimo = passos[passos.length - 1];
+      atualizarValoresVisuais(ultimo.s1, ultimo.s2, ultimo.s3);
+    }
+    return;
   }
-
-  if (!configIP) return;
   try {
     await fetch('http://' + configIP + '/sequencia', {
       method: 'POST',
@@ -480,10 +699,50 @@ async function enviarSequencia(passos) {
     });
     document.getElementById('pontoStatus').className = 'ponto ok';
     document.getElementById('textoStatus').textContent = 'braço conectado';
+
+    // Estima por quanto tempo a sequencia vai durar, para acompanhar a posicao real
+    // enquanto ela executa (mostra os angulos mudando ao vivo na tela)
+    let duracaoEstimada = 0;
+    let s1 = 90, s2 = 90, s3 = 90;
+    // parte da posicao atual mostrada na tela
+    s1 = parseInt(document.getElementById('valorS1').textContent) || 90;
+    s2 = parseInt(document.getElementById('valorS2').textContent) || 90;
+    s3 = parseInt(document.getElementById('valorS3').textContent) || 90;
+    for (const p of passos) {
+      const t1 = Math.abs(p.s1 - s1) * p.v1;
+      const t2 = Math.abs(p.s2 - s2) * p.v2;
+      const t3 = Math.abs(p.s3 - s3) * p.v3;
+      duracaoEstimada += Math.max(t1, t2, t3) + (p.pausa || 0);
+      s1 = p.s1; s2 = p.s2; s3 = p.s3;
+    }
+    acompanharPosicaoReal(duracaoEstimada + 500);
+
   } catch (e) {
     document.getElementById('pontoStatus').className = 'ponto err';
     document.getElementById('textoStatus').textContent = 'falha ao mover';
   }
+}
+
+// Consulta a posicao real do ESP32 repetidamente por um tempo, atualizando a tela ao vivo
+let acompanhamentoAtivo = null;
+function acompanharPosicaoReal(duracaoMs) {
+  if (acompanhamentoAtivo) clearInterval(acompanhamentoAtivo);
+  const fim = Date.now() + duracaoMs;
+
+  acompanhamentoAtivo = setInterval(async () => {
+    if (Date.now() > fim) {
+      clearInterval(acompanhamentoAtivo);
+      acompanhamentoAtivo = null;
+      return;
+    }
+    try {
+      const resp = await fetch('http://' + configIP + '/status');
+      const d = await resp.json();
+      atualizarValoresVisuais(d.s1, d.s2, d.s3);
+    } catch (e) {
+      // ignora falhas pontuais durante o acompanhamento
+    }
+  }, 120);
 }
 
 function atualizarValoresVisuais(s1, s2, s3) {
@@ -492,7 +751,7 @@ function atualizarValoresVisuais(s1, s2, s3) {
   document.getElementById('valorS3').textContent = s3;
 }
 
-// ---------------- CHAT COM GEMINI ----------------
+// ---------------- CHAT COM GROQ ----------------
 async function enviarComando() {
   const campo = document.getElementById('campoTexto');
   const comando = campo.value.trim();
@@ -510,32 +769,58 @@ async function enviarComando() {
   const s2Atual = document.getElementById('valorS2').textContent;
   const s3Atual = document.getElementById('valorS3').textContent;
 
-  const promptSistema = 'Você controla um braço robótico com 3 servos (0 a 180 graus cada) e uma tela LCD de 16 colunas por 2 linhas. ' +
-    'Servo 1 controla a base de um braço articulado (cima/baixo). ' +
-    'Servo 2 controla a ponta do braço (cima/baixo). ' +
-    'Servo 3 controla o giro horizontal da base (esquerda/direita). ' +
-    'Posição atual: servo1=' + s1Atual + ', servo2=' + s2Atual + ', servo3=' + s3Atual + '. ' +
-    'Você pode fazer tanto um único movimento quanto uma sequência de vários passos (por exemplo, se pedirem para "dançar", crie uma sequência de 3 a 6 passos variados, repetindo ou alternando posições). Use no máximo 6 passos por sequência. ' +
-    'Para cada passo, escolha o ângulo (0-180) de cada servo, e uma velocidade individual para cada um (em milissegundos por grau: valores baixos como 5-10 são rápidos, valores altos como 30-50 são lentos e suaves). ' +
-    'Escolha também uma pausa em milissegundos para esperar depois que esse passo terminar, antes do próximo (0 se não precisar esperar). ' +
-    'Quando fizer sentido, você pode também mostrar uma mensagem curta na tela LCD, usando até 16 caracteres por linha, em até 2 linhas. Isso é opcional - só inclua "tela" quando for útil ou divertido mostrar algo. ' +
-    'Responda SOMENTE em JSON, sem nenhum texto antes ou depois, no formato exato: ' +
-    '{"fala": "frase curta confirmando a ação", "tela": {"linha1": "texto", "linha2": "texto"}, "passos": [{"s1": numero, "v1": numero, "s2": numero, "v2": numero, "s3": numero, "v3": numero, "pausa": numero}]}. ' +
-    'O campo "tela" é opcional - omita-o se não fizer sentido mostrar nada. Para um movimento simples, use uma lista "passos" com 1 só item.';
+  const promptSistema =
+    'Você é a inteligência que controla um braço robótico físico real. O braço tem 3 servomotores e uma pequena tela LCD de 16 colunas por 2 linhas onde você pode escrever. Você recebe comandos de uma pessoa e responde decidindo como o braço deve se mover.\n\n' +
+
+    '=== GEOMETRIA DO BRAÇO ===\n' +
+    'O braço é montado sobre uma base giratória. A partir da base, sobe uma primeira haste (o "ombro"), e na ponta dela há uma segunda haste (o "antebraço"). Cada servo controla uma parte:\n' +
+    'SERVO 1 (ombro / base do braço): é a haste que sobe da base. 0° = inclinada totalmente para trás; 90° = reta apontando para cima (posição neutra/descanso); 180° = inclinada totalmente para frente. Pense nele como levantar/abaixar o braço inteiro para frente e para trás.\n' +
+    'SERVO 2 (antebraço / ponta do braço): é a haste presa na ponta do ombro. 0° = abaixada totalmente; 90° = reta na horizontal (neutra); 180° = levantada totalmente. Pense nele como dobrar o cotovelo, levantando ou abaixando a ponta.\n' +
+    'SERVO 3 (giro da base): gira o braço todo no plano horizontal. 0° = virado totalmente para a DIREITA; 90° = apontando para o CENTRO/frente (neutro); 180° = virado totalmente para a ESQUERDA. É como o braço virar a cabeça para olhar para os lados.\n\n' +
+
+    '=== POSIÇÃO ATUAL ===\n' +
+    'Neste momento o braço está em: servo1=' + s1Atual + '°, servo2=' + s2Atual + '°, servo3=' + s3Atual + '°. Sempre considere de onde o braço está partindo ao planejar um movimento.\n\n' +
+
+    '=== COMO VOCÊ RESPONDE ===\n' +
+    'Você sempre responde com uma SEQUÊNCIA de um ou mais passos. Cada passo define para qual ângulo cada servo deve ir, a velocidade de cada servo, e uma pausa ao final do passo.\n' +
+    '- Para um gesto simples (ex: "levante o braço", "olhe para a esquerda"), use 1 passo só.\n' +
+    '- Para algo expressivo (ex: "dance", "acene", "comemore"), use uma sequência de 3 a 30 passos que, juntos, formem o gesto. Você pode alternar e repetir posições para criar ritmo. Para danças ou gestos elaborados, sinta-se à vontade para usar muitos passos.\n' +
+    '- Use no máximo 30 passos por resposta.\n\n' +
+
+    '=== VELOCIDADE E PAUSA ===\n' +
+    'Velocidade é dada em milissegundos por grau (quanto MENOR, mais RÁPIDO o servo se move):\n' +
+    '- Use 1 a 3 para a maioria dos movimentos (bem rápido e ágil). Este é o padrão.\n' +
+    '- Use 10 a 20 apenas quando quiser deliberadamente um movimento LENTO e suave (ex: um gesto dramático, tímido, ou delicado).\n' +
+    'Pausa é dada em milissegundos: é quanto tempo o braço espera parado ao terminar aquele passo, antes de ir para o próximo. Use 0 para movimentos contínuos/fluidos, ou valores como 200 a 600 para criar batidas e ritmo entre os passos de uma dança ou aceno.\n\n' +
+
+    '=== A TELA LCD ===\n' +
+    'Você pode opcionalmente escrever na tela (campo "tela", com linha1 e linha2, máximo 16 caracteres cada). A tela é de caracteres simples, então NÃO use emojis gráficos. Para mostrar emoções, use rostinhos de texto ASCII como: :) feliz, :D muito feliz, :( triste, >:( bravo, :O surpreso, ^_^ alegre, -_- entediado, ;) piscadinha, :P brincalhão. Use a tela quando for divertido ou comunicar algo; pode omitir o campo "tela" quando não fizer sentido.\n\n' +
+
+    '=== MODO LIVRE (comando "2") ===\n' +
+    'Se a pessoa enviar exatamente "2", isso é um convite para você fazer O QUE QUISER: invente um movimento ou pequena coreografia espontânea, do seu gosto, demonstrando personalidade. NESTE caso, é OBRIGATÓRIO preencher o campo "tela" com um rostinho ASCII que represente a emoção que você está sentindo/expressando naquele movimento (ex: se fizer algo animado, mostre :D ; se fizer algo curioso, :O ; etc.), e na outra linha pode pôr uma palavra curta sobre o humor. Capriche e seja criativo.\n\n' +
+
+    '=== FORMATO DA RESPOSTA ===\n' +
+    'Responda SOMENTE com JSON válido, sem nenhum texto antes ou depois, sem markdown, exatamente neste formato:\n' +
+    '{"fala": "frase curta confirmando a ação", "tela": {"linha1": "texto ate 16 chars", "linha2": "texto ate 16 chars"}, "passos": [{"s1": numero, "v1": numero, "s2": numero, "v2": numero, "s3": numero, "v3": numero, "pausa": numero}]}\n' +
+    'O campo "tela" é opcional na maioria dos casos (mas obrigatório no comando "2"). O campo "passos" sempre deve ter ao menos 1 item.';
 
   try {
     const resposta = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=' + configChave,
+      'https://api.groq.com/openai/v1/chat/completions',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + configChave
+        },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: comando }] }],
-          systemInstruction: { parts: [{ text: promptSistema }] },
-          generationConfig: {
-            responseMimeType: 'application/json',
-            maxOutputTokens: 2048
-          }
+          model: 'openai/gpt-oss-120b',
+          messages: [
+            { role: 'system', content: promptSistema },
+            { role: 'user', content: comando }
+          ],
+          response_format: { type: 'json_object' },
+          max_tokens: 4096
         })
       }
     );
@@ -546,23 +831,23 @@ async function enviarComando() {
       throw new Error('API: ' + dados.error.message);
     }
 
-    const candidato = dados.candidates && dados.candidates[0];
-    if (!candidato || !candidato.content) {
-      console.log('Resposta completa do Gemini:', JSON.stringify(dados));
-      throw new Error('Resposta vazia (motivo: ' + (candidato ? candidato.finishReason : 'sem candidato') + ')');
+    const escolha = dados.choices && dados.choices[0];
+    if (!escolha || !escolha.message) {
+      console.log('Resposta completa da Groq:', JSON.stringify(dados));
+      throw new Error('Resposta vazia (motivo: ' + (escolha ? escolha.finish_reason : 'sem escolha') + ')');
     }
 
-    const textoResposta = candidato.content.parts[0].text;
+    const textoResposta = escolha.message.content;
     const limpo = textoResposta.replace(/```json|```/g, '').trim();
     const json = JSON.parse(limpo);
 
     const passosValidados = (json.passos || []).map(p => ({
       s1: Math.max(0, Math.min(180, parseInt(p.s1))),
-      v1: Math.max(1, parseInt(p.v1) || 15),
+      v1: Math.max(1, parseInt(p.v1) || 2),
       s2: Math.max(0, Math.min(180, parseInt(p.s2))),
-      v2: Math.max(1, parseInt(p.v2) || 15),
+      v2: Math.max(1, parseInt(p.v2) || 2),
       s3: Math.max(0, Math.min(180, parseInt(p.s3))),
-      v3: Math.max(1, parseInt(p.v3) || 15),
+      v3: Math.max(1, parseInt(p.v3) || 2),
       pausa: Math.max(0, parseInt(p.pausa) || 0)
     }));
 
@@ -758,6 +1043,141 @@ document.getElementById('botaoCentralizar').addEventListener('click', () => {
   ultimoEnvioManual = 0;
   enviarPosicaoManual();
 });
+
+// ---------------- DIAGNÓSTICO ----------------
+let intervaloDiag = null;
+let historicoHeap = [];
+const MAX_HISTORICO = 40;
+
+// Pinos usados pelo proprio projeto, para destacar na grade de GPIO
+const pinosDoProjeto = {
+  13: 'S1', 12: 'S2', 14: 'S3', 21: 'SDA', 22: 'SCL'
+};
+
+function iniciarDiagnostico() {
+  buscarStatus();
+  if (intervaloDiag) clearInterval(intervaloDiag);
+  intervaloDiag = setInterval(buscarStatus, 1500);
+}
+
+function pararDiagnostico() {
+  if (intervaloDiag) {
+    clearInterval(intervaloDiag);
+    intervaloDiag = null;
+  }
+}
+
+document.getElementById('botaoAtualizarDiag').addEventListener('click', buscarStatus);
+
+async function buscarStatus() {
+  const txt = document.getElementById('diagStatusTexto');
+  if (!configIP) {
+    txt.textContent = 'Configure o IP do ESP32 primeiro';
+    return;
+  }
+  try {
+    const resp = await fetch('http://' + configIP + '/status');
+    const d = await resp.json();
+    txt.textContent = 'Atualizado agora';
+    atualizarDiagnostico(d);
+  } catch (e) {
+    txt.textContent = 'Falha ao buscar status do ESP32';
+  }
+}
+
+function kb(bytes) {
+  return Math.round(bytes / 1024);
+}
+
+function formatarUptime(seg) {
+  const h = Math.floor(seg / 3600);
+  const m = Math.floor((seg % 3600) / 60);
+  const s = seg % 60;
+  if (h > 0) return h + 'h ' + m + 'm';
+  if (m > 0) return m + 'm ' + s + 's';
+  return s + 's';
+}
+
+function atualizarDiagnostico(d) {
+  // Cartoes
+  document.getElementById('mHeapLivre').textContent = kb(d.heapLivre);
+  document.getElementById('mTemp').textContent = d.temperatura;
+  document.getElementById('mUptime').textContent = formatarUptime(d.uptimeSeg);
+  document.getElementById('mRssi').textContent = d.rssi;
+  document.getElementById('mCpu').textContent = d.cpuMhz;
+  document.getElementById('mComandos').textContent = d.comandos;
+  document.getElementById('mHeapMin').textContent = kb(d.heapMinimo);
+
+  // Grafico de heap ao longo do tempo
+  historicoHeap.push(d.heapLivre);
+  if (historicoHeap.length > MAX_HISTORICO) historicoHeap.shift();
+  desenharGraficoHeap(d.heapTotal);
+
+  // Mapa de memoria RAM (heap)
+  const usada = d.heapTotal - d.heapLivre;
+  const pctUsada = (usada / d.heapTotal) * 100;
+  document.getElementById('barraMemUsada').style.width = pctUsada + '%';
+  document.getElementById('memUsada').textContent = kb(usada);
+  document.getElementById('memLivre').textContent = kb(d.heapLivre);
+  document.getElementById('memMaiorBloco').textContent = kb(d.maiorBloco);
+
+  // Flash
+  const flashPct = (d.sketchUsado / d.flashTotal) * 100;
+  document.getElementById('barraFlashUsada').style.width = flashPct + '%';
+  document.getElementById('flashUsada').textContent = kb(d.sketchUsado);
+  document.getElementById('flashTotal').textContent = kb(d.flashTotal);
+
+  // GPIOs
+  desenharGPIOs(d.gpioEnable, d.gpioOut);
+}
+
+function desenharGraficoHeap(heapTotal) {
+  const svg = document.getElementById('graficoHeap');
+  if (historicoHeap.length < 2) return;
+
+  const w = 300, h = 80;
+  const min = Math.min(...historicoHeap) * 0.98;
+  const max = Math.max(...historicoHeap) * 1.02;
+  const range = max - min || 1;
+
+  let pontos = historicoHeap.map((v, i) => {
+    const x = (i / (MAX_HISTORICO - 1)) * w;
+    const y = h - ((v - min) / range) * h;
+    return x.toFixed(1) + ',' + y.toFixed(1);
+  }).join(' ');
+
+  svg.innerHTML =
+    '<polyline points="' + pontos + '" fill="none" stroke="#ff7a3d" stroke-width="2"/>';
+}
+
+function desenharGPIOs(gpioEnable, gpioOut) {
+  const grade = document.getElementById('gpioGrade');
+  grade.innerHTML = '';
+
+  // Mostra GPIOs 0 a 23 (os mais usados nesse tipo de placa)
+  for (let pino = 0; pino <= 23; pino++) {
+    const div = document.createElement('div');
+    div.className = 'gpio-pino';
+
+    const ehSaida = (gpioEnable & (1 << pino)) !== 0;
+    const ehDoProjeto = pinosDoProjeto[pino] !== undefined;
+
+    if (ehDoProjeto) {
+      div.classList.add('projeto');
+      div.textContent = pinosDoProjeto[pino];
+      div.title = 'GPIO ' + pino + ' — ' + pinosDoProjeto[pino];
+    } else if (ehSaida) {
+      div.classList.add('saida');
+      div.textContent = pino;
+      div.title = 'GPIO ' + pino + ' — configurado como saída';
+    } else {
+      div.textContent = pino;
+      div.title = 'GPIO ' + pino + ' — livre/entrada';
+    }
+    grade.appendChild(div);
+  }
+}
+
 </script>
 
 </body>
